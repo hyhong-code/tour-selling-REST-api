@@ -1,3 +1,4 @@
+require('dotenv').config({ path: './config.env' });
 const app = require('./app');
 
 // Start server
