@@ -11,6 +11,16 @@ exports.checkId = (req, res, next, val) => {
   next();
 };
 
+exports.checkBody = (req, res, next) => {
+  if (!req.body.name || !req.body.price) {
+    return res.status(400).json({
+      status: 'fail',
+      message: 'Name and price are required.',
+    });
+  }
+  next();
+};
+
 // Route handlers
 exports.getAllTours = (req, res) => {
   res.status(200).json({
