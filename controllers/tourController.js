@@ -29,11 +29,23 @@ exports.getAllTours = async (req, res) => {
       query = query.sort('-createdAt');
     }
 
-    // const tours = await Tour.find();
-    //   .where('duration')
-    //   .equals(5)
-    //   .where('difficulty')
-    //   .equals('easy');
+    // 3. Fields limiting
+    if (req.query.fields) {
+      query = query.select(req.query.fields.split(',').join(' '));
+    } else {
+      query = query.select('-__v'); // no need to send __v to client
+    }
+
+    // 4. Pagination
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 100;
+    const skip = (page - 1) * limit;
+    query = query.skip(skip).limit(limit);
+
+    const totalNumDocs = await Tour.countDocuments();
+    if (req.query.page && skip >= totalNumDocs) {
+      throw new Error(`Page ${req.query.page} does not exist`);
+    }
 
     // Execute query
     const tours = await query;
@@ -42,7 +54,7 @@ exports.getAllTours = async (req, res) => {
       .json({ status: 'success', results: tours.length, data: { tours } });
   } catch (error) {
     console.error(error);
-    res.status(404).json({ statsu: 'fail', message: error });
+    res.status(404).json({ statsu: 'fail', message: error.message });
   }
 };
 
