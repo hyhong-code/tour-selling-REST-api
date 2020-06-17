@@ -30,8 +30,17 @@ const sendErrorProd = (err, res) => {
 };
 
 const handleCastErrorDB = (error) => {
-  error.isOperational = true; // Mark error as operational
   const message = `Invalid ${error.path} : ${error.value}`;
+  return new AppError(message, 400);
+};
+
+const handleDuplicateKeyDB = (error) => {
+  const message = Object.keys(error.keyValue)
+    .map(
+      (key) =>
+        `Value "${error.keyValue[key]}" is already taken for field "${key}"`
+    )
+    .join(', ');
   return new AppError(message, 400);
 };
 
@@ -45,6 +54,7 @@ const errorController = (err, req, res, next) => {
     let error = { ...err };
     error.name = err.name; // err.name is enumerable field
     if (error.name === 'CastError') error = handleCastErrorDB(error);
+    if (error.code === 11000) error = handleDuplicateKeyDB(error);
     sendErrorProd(error, res);
   }
 };
