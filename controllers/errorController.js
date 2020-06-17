@@ -1,3 +1,5 @@
+const AppError = require('../utils/appError');
+
 // Development enviroment
 const sendErrorDev = (err, res) => {
   res.status(err.statusCode).json({
@@ -27,6 +29,12 @@ const sendErrorProd = (err, res) => {
   }
 };
 
+const handleCastErrorDB = (error) => {
+  error.isOperational = true; // Mark error as operational
+  const message = `Invalid ${error.path} : ${error.value}`;
+  return new AppError(message, 400);
+};
+
 const errorController = (err, req, res, next) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
@@ -34,7 +42,10 @@ const errorController = (err, req, res, next) => {
   if (process.env.NODE_ENV === 'development') {
     sendErrorDev(err, res);
   } else if (process.env.NODE_ENV === 'production') {
-    sendErrorProd(err, res);
+    let error = { ...err };
+    error.name = err.name; // err.name is enumerable field
+    if (error.name === 'CastError') error = handleCastErrorDB(error);
+    sendErrorProd(error, res);
   }
 };
 

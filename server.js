@@ -12,4 +12,7 @@ mongoose
   .then(console.log(`MongoDB connected`));
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, console.log(`Server up on port ${PORT}`));
+app.listen(
+  PORT,
+  console.log(`Server up on port ${PORT} in ${process.env.NODE_ENV} mode`)
+);
