@@ -29,11 +29,13 @@ const sendErrorProd = (err, res) => {
   }
 };
 
+// Handle mongoose ObjectID casting error
 const handleCastErrorDB = (error) => {
   const message = `Invalid value ${error.value} for field ${error.path}`;
   return new AppError(message, 400);
 };
 
+// Handle mongoose Duplicate keys error
 const handleDuplicateKeyDB = (error) => {
   const message = Object.keys(error.keyValue)
     .map(
@@ -44,6 +46,7 @@ const handleDuplicateKeyDB = (error) => {
   return new AppError(`Duplicate key: ${message}`, 400);
 };
 
+// Handle mongoose Validation error
 const handleValidationErrorDB = (error) => {
   const message = Object.values(error.errors)
     .map((err) => err.message)

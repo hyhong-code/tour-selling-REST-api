@@ -12,7 +12,16 @@ mongoose
   .then(console.log(`MongoDB connected`));
 
 const PORT = process.env.PORT || 5000;
-app.listen(
+const server = app.listen(
   PORT,
   console.log(`Server up on port ${PORT} in ${process.env.NODE_ENV} mode`)
 );
+
+// Prevent unhandledRejection globally
+process.on('unhandledRejection', (err) => {
+  console.log(err.name, err.message);
+  console.log(`Caught unhandled rejection! server shutting down...`);
+
+  // Let server finish handling pending reqs then shut down.
+  server.close(() => process.exit(1)); // Exit on unhandled rejection use code 1
+});
