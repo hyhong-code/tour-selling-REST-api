@@ -30,7 +30,7 @@ const sendErrorProd = (err, res) => {
 };
 
 const handleCastErrorDB = (error) => {
-  const message = `Invalid ${error.path} : ${error.value}`;
+  const message = `Invalid value ${error.value} for field ${error.path}`;
   return new AppError(message, 400);
 };
 
@@ -41,7 +41,14 @@ const handleDuplicateKeyDB = (error) => {
         `Value "${error.keyValue[key]}" is already taken for field "${key}"`
     )
     .join(', ');
-  return new AppError(message, 400);
+  return new AppError(`Duplicate key: ${message}`, 400);
+};
+
+const handleValidationErrorDB = (error) => {
+  const message = Object.values(error.errors)
+    .map((err) => err.message)
+    .join(', ');
+  return new AppError(`Invalid input: ${message}`, 400);
 };
 
 const errorController = (err, req, res, next) => {
@@ -55,6 +62,7 @@ const errorController = (err, req, res, next) => {
     error.name = err.name; // err.name is enumerable field
     if (error.name === 'CastError') error = handleCastErrorDB(error);
     if (error.code === 11000) error = handleDuplicateKeyDB(error);
+    if (error.errors) error = handleValidationErrorDB(error);
     sendErrorProd(error, res);
   }
 };
