@@ -3,8 +3,40 @@ const Tour = require('../models/tourModel');
 
 // Route handlers
 exports.getAllTours = async (req, res) => {
+  console.log(req.query);
+
   try {
-    const tours = await Tour.find();
+    // 1. Filtering
+    const queryObj = { ...req.query };
+
+    // Exclude query keywords
+    const excludedFields = ['fields', 'sort', 'page', 'limit'];
+    excludedFields.forEach((field) => delete queryObj[field]);
+
+    // Use query operators
+    const queryStr = JSON.stringify(queryObj).replace(
+      /\b(lt|lte|gt|gte|in)\b/g,
+      (match) => `$${match}`
+    );
+
+    // Build up query
+    let query = Tour.find(JSON.parse(queryStr)); // if no await, returns query doc
+
+    // 2. Sorting
+    if (req.query.sort) {
+      query = query.sort(req.query.sort.split(',').join(' ')); // sort('price ratingsAverage')
+    } else {
+      query = query.sort('-createdAt');
+    }
+
+    // const tours = await Tour.find();
+    //   .where('duration')
+    //   .equals(5)
+    //   .where('difficulty')
+    //   .equals('easy');
+
+    // Execute query
+    const tours = await query;
     res
       .status(200)
       .json({ status: 'success', results: tours.length, data: { tours } });
