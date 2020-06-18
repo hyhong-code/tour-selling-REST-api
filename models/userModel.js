@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const validator = require('validator');
+const bcrypt = require('bcryptjs');
 
 const UserSchema = new mongoose.Schema({
   name: {
@@ -27,6 +28,7 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Password confirmation is required'],
     validate: {
+      // Only works on create() and save()
       validator: function (v) {
         return v === this.password;
       },
@@ -37,6 +39,16 @@ const UserSchema = new mongoose.Schema({
     type: Date,
     default: Date.now(),
   },
+});
+
+// Hash password pre save
+UserSchema.pre('save', async function (next) {
+  // Only run if password is modified
+  if (!this.modifiedPaths().includes('password')) return next();
+  // Hash with 12 rounds of salt
+  this.password = await bcrypt.hash(this.password, 12);
+  this.passwordConfirm = undefined; // required is only for input validation
+  next();
 });
 
 module.exports = mongoose.model('User', UserSchema);
