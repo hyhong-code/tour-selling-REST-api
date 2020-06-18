@@ -17,25 +17,13 @@ exports.getReviews = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.addReview = catchAsync(async (req, res, next) => {
+exports.setTourUserIds = (req, res, next) => {
   // Attach tour and user to request body
   if (!req.body.tour) req.body.tour = req.params.tourId;
-  req.body.user = req.user._id;
+  req.body.user = req.user.id;
+  next();
+};
 
-  // Check if tour exists
-  const tour = await Tour.findById(req.params.tourId);
-  if (!tour) {
-    return next(new AppError(`No such tour with id ${req.params.tourId}`, 404));
-  }
-
-  // Create the review
-  const review = await Review.create(req.body);
-  res.status(201).json({
-    status: 'success',
-    data: { review },
-  });
-});
-
+exports.createReview = factory.createOne(Review);
 exports.updateReview = factory.updateOne(Review);
-
 exports.deleteReview = factory.deleteOne(Review);
