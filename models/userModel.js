@@ -49,6 +49,11 @@ const UserSchema = new mongoose.Schema({
   },
   passwordResetToken: String,
   passwordResetExpires: Date,
+  active: {
+    type: Boolean,
+    default: true,
+    select: false,
+  },
 });
 
 // Hash password pre save
@@ -65,6 +70,12 @@ UserSchema.pre('save', async function (next) {
 UserSchema.pre('save', function (next) {
   if (!this.isModified('password') || this.isNew) return next();
   this.passwordChangedAt = Date.now() - 1000;
+  next();
+});
+
+// Filter out inactive users pre find
+UserSchema.pre(/^find/, async function (next) {
+  await this.find({ active: { $ne: false } }); // add this to query before its executed
   next();
 });
 
