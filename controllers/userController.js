@@ -11,6 +11,41 @@ exports.getAllUsers = catchAsync(async (req, res, next) => {
   });
 });
 
+// Remove unwanted fields in req.body to get ready for update
+const filterObj = (obj, ...allowedFields) => {
+  const newObj = {};
+  Object.keys(obj).forEach((key) => {
+    if (allowedFields.includes(key)) newObj[key] = obj[key];
+  });
+  return newObj;
+};
+
+exports.updateMe = catchAsync(async (req, res, next) => {
+  // Check if user tries to update password
+  if (req.body.password || req.body.passwordComfirmed) {
+    return next(
+      new AppError(
+        `This route is not for pasword updates, please use /api/v1/users/updatemypassword`,
+        400
+      )
+    );
+  }
+
+  // Fileter out unwanted update fields (role...)
+  const filteredBody = filterObj(req.body, 'name', 'email');
+
+  // Update user info
+  const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
+    new: true,
+    runValidators: true,
+  });
+
+  res.status(200).json({
+    status: 'success',
+    data: { user: updatedUser },
+  });
+});
+
 exports.getUser = (req, res) => {
   res
     .status(500)

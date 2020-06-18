@@ -10,6 +10,16 @@ const signToken = (id) =>
     expiresIn: process.env.JWT_EXPIRES_IN,
   });
 
+const createAndSendToken = (user, statusCode, res) => {
+  const token = signToken(user._id);
+
+  res.status(statusCode).json({
+    status: 'success',
+    token,
+    data: { user },
+  });
+};
+
 exports.signup = catchAsync(async (req, res, next) => {
   const newUser = await User.create({
     name: req.body.name,
@@ -18,13 +28,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     passwordConfirm: req.body.passwordConfirm,
   });
 
-  const token = signToken(newUser._id);
-
-  res.status(201).json({
-    status: 'success',
-    token,
-    data: { user: newUser },
-  });
+  createAndSendToken(newUser, 201, res);
 });
 
 exports.login = catchAsync(async (req, res, next) => {
@@ -38,59 +42,25 @@ exports.login = catchAsync(async (req, res, next) => {
     return next(new AppError(`Invalid credentials`, 401));
   }
 
-  const token = signToken(user._id);
-
-  res.status(200).json({
-    status: 'success',
-    token,
-  });
+  createAndSendToken(user, 200, res);
 });
 
-exports.protect = catchAsync(async (req, res, next) => {
-  // Check if there is a token in request headers
-  if (
-    !req.headers.authorization ||
-    !req.headers.authorization.startsWith('Bearer')
-  ) {
-    return next(new AppError(`Not logged in, please login to access`, 401));
+exports.updatePassword = catchAsync(async (req, res, next) => {
+  const { currentPassword, newPassword, newPasswordComfirmed } = req.body;
+  const user = await User.findById(req.user.id).select('+password');
+
+  // Check password is correct
+  if (!(await user.correctPassword(currentPassword, user.password))) {
+    return next(new AppError(`Current password is incorrect`, 401));
   }
 
-  const token = req.headers.authorization.split(' ')[1];
+  // Update password
+  user.password = newPassword;
+  user.passwordConfirm = newPasswordComfirmed;
+  await user.save({ validateBeforeSave: true });
 
-  // Invalid token and expired token errors are handled in global error handler
-  const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-  // Check if user still exists
-  const user = await User.findById(decoded.id);
-  if (!user) {
-    return next(new AppError(`User no longer exists`, 401));
-  }
-
-  // Check if user recently changed password
-  if (user.changedPasswordAfter(decoded.iat)) {
-    return next(
-      new AppError(`Password is recently changed, please login again`, 401)
-    );
-  }
-
-  // Give access
-  req.user = user;
-
-  next();
+  createAndSendToken(user, 200, res);
 });
-
-exports.restrictTo = (...roles) => (req, res, next) => {
-  // roles ['admin','lead-guide']
-  if (!roles.includes(req.user.role)) {
-    return next(
-      new AppError(
-        `User role ${req.user.role} is unauthorized to access this route`,
-        403
-      )
-    );
-  }
-  next();
-};
 
 exports.forgotPassword = catchAsync(async (req, res, next) => {
   const { email } = req.body;
@@ -161,7 +131,51 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   user.passwordResetExpires = undefined;
   await user.save(); // Use .save to trigger password validation, and bcrypt hash
 
-  // update
-  const jwtToken = signToken(user._id);
-  res.status(200).json({ status: 'success', data: { token: jwtToken } });
+  createAndSendToken(user, 200, res);
 });
+
+exports.protect = catchAsync(async (req, res, next) => {
+  // Check if there is a token in request headers
+  if (
+    !req.headers.authorization ||
+    !req.headers.authorization.startsWith('Bearer')
+  ) {
+    return next(new AppError(`Not logged in, please login to access`, 401));
+  }
+
+  const token = req.headers.authorization.split(' ')[1];
+
+  // Invalid token and expired token errors are handled in global error handler
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+  // Check if user still exists
+  const user = await User.findById(decoded.id);
+  if (!user) {
+    return next(new AppError(`User no longer exists`, 401));
+  }
+
+  // Check if user recently changed password
+  if (user.changedPasswordAfter(decoded.iat)) {
+    return next(
+      new AppError(`Password is recently changed, please login again`, 401)
+    );
+  }
+
+  // Give access
+  req.user = user;
+
+  next();
+});
+
+exports.restrictTo = (...roles) => (req, res, next) => {
+  // roles ['admin','lead-guide']
+  if (!roles.includes(req.user.role)) {
+    return next(
+      new AppError(
+        `User role ${req.user.role} is unauthorized to access this route`,
+        403
+      )
+    );
+  }
+  next();
+};
