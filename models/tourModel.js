@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const slugify = require('slugify');
+// const User = require('./userModel');
 
 const TourSchema = new mongoose.Schema(
   {
@@ -100,6 +101,12 @@ const TourSchema = new mongoose.Schema(
         day: Number,
       },
     ],
+    guides: [
+      {
+        type: mongoose.Schema.ObjectId,
+        ref: 'User',
+      },
+    ],
   },
   {
     // Everytime data is outputted as JSON or Object, include the virtuals
@@ -119,8 +126,11 @@ TourSchema.pre('save', function (next) {
   next();
 });
 
-// TourSchema.pre('save', function (next) {
-//   console.log('Will save doc');
+// Embed tour guides into TourModel
+// TourSchema.pre('save', async function (next) {
+//   // .map() cannot be made async
+//   const guidesPromises = this.guides.map((id) => User.findById(id));
+//   this.guides = await Promise.all(guidesPromises);
 //   next();
 // });
 
@@ -128,6 +138,15 @@ TourSchema.pre('save', function (next) {
 //   console.log(doc);
 //   next();
 // });
+
+// Populate guides for every query
+TourSchema.pre(/^find/, function (next) {
+  this.populate({
+    path: 'guides',
+    select: '-__v -passwordChangedAt',
+  });
+  next();
+});
 
 // Query middleware (this points to current query)
 TourSchema.pre(/^find/, function (next) {
