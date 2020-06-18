@@ -1,4 +1,4 @@
-require('dotenv').config({ path: './config.env' });
+require('dotenv').config({ path: `${__dirname}/../../config/config.env` });
 const mongoose = require('mongoose');
 const fs = require('fs');
 const Tour = require('../../models/tourModel');
@@ -13,9 +13,7 @@ mongoose
   .then(console.log(`MongoDB connected`));
 
 // Read file
-const tours = JSON.parse(
-  fs.readFileSync(`${__dirname}/tours-simple.json`, 'utf8')
-);
+const tours = JSON.parse(fs.readFileSync(`${__dirname}/tours.json`, 'utf8'));
 
 // Import to db
 const importData = async () => {
