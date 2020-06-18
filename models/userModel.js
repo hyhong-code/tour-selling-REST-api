@@ -27,7 +27,7 @@ const UserSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    minlength: [8, 'Password must be at least 6 characters'],
+    minlength: [8, 'Password must be at least 8 characters'],
     required: [true, 'Password is required'],
     select: false,
   },
@@ -54,10 +54,17 @@ const UserSchema = new mongoose.Schema({
 // Hash password pre save
 UserSchema.pre('save', async function (next) {
   // Only run if password is modified
-  if (!this.modifiedPaths().includes('password')) return next();
+  if (!this.isModified('password')) return next();
   // Hash with 12 rounds of salt
   this.password = await bcrypt.hash(this.password, 12);
   this.passwordConfirm = undefined; // required is only for input validation
+  next();
+});
+
+// Update passwordChangedAt when password changes
+UserSchema.pre('save', function (next) {
+  if (!this.isModified('password') || this.isNew) return next();
+  this.passwordChangedAt = Date.now() - 1000;
   next();
 });
 
