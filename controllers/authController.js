@@ -2,7 +2,11 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
 const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
-const bcrypt = require('bcryptjs');
+
+const signToken = (id) =>
+  jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN,
+  });
 
 exports.signup = catchAsync(async (req, res, next) => {
   const newUser = await User.create({
@@ -10,11 +14,10 @@ exports.signup = catchAsync(async (req, res, next) => {
     email: req.body.email,
     password: req.body.password,
     passwordConfirm: req.body.passwordConfirm,
+    passwordChangedAt: req.body.passwordChangedAt,
   });
 
-  const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN,
-  });
+  const token = signToken(newUser._id);
 
   res.status(201).json({
     status: 'success',
@@ -30,16 +33,47 @@ exports.login = catchAsync(async (req, res, next) => {
   }
 
   const user = await User.findOne({ email }).select('+password'); // because select:false in model
-  if (!user || !(await bcrypt.compare(password, user.password))) {
-    return next(new AppError(`Invalid credentials`, 400));
+  if (!user || !(await user.correctPassword(password, user.password))) {
+    return next(new AppError(`Invalid credentials`, 401));
   }
 
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN,
-  });
+  const token = signToken(user._id);
 
   res.status(200).json({
     status: 'success',
     token,
   });
+});
+
+exports.protect = catchAsync(async (req, res, next) => {
+  // Check if there is a token in request headers
+  if (
+    !req.headers.authorization ||
+    !req.headers.authorization.startsWith('Bearer')
+  ) {
+    return next(new AppError(`Not logged in, please login to access`, 401));
+  }
+
+  const token = req.headers.authorization.split(' ')[1];
+
+  // Invalid token and expired token errors are handled in global error handler
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+  // Check if user still exists
+  const user = await User.findById(decoded.id);
+  if (!user) {
+    return next(new AppError(`User no longer exists`, 401));
+  }
+
+  // Check if user recently changed password
+  if (user.changedPasswordAfter(decoded.iat)) {
+    return next(
+      new AppError(`Password is recently changed, please login again`, 401)
+    );
+  }
+
+  // Give access
+  req.user = user;
+
+  next();
 });

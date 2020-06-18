@@ -54,6 +54,12 @@ const handleValidationErrorDB = (error) => {
   return new AppError(`Invalid input: ${message}`, 400);
 };
 
+const handleInvalidJWTError = () =>
+  new AppError(`Invalid token, please login again`, 401);
+
+const handleJWTExpiredError = () =>
+  new AppError(`Token expired, please login again`, 401);
+
 const errorController = (err, req, res, next) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
@@ -66,6 +72,8 @@ const errorController = (err, req, res, next) => {
     if (error.name === 'CastError') error = handleCastErrorDB(error);
     if (error.code === 11000) error = handleDuplicateKeyDB(error);
     if (error.errors) error = handleValidationErrorDB(error);
+    if (error.name === 'JsonWebTokenError') error = handleInvalidJWTError();
+    if (error.name === 'TokenExpiredError') error = handleJWTExpiredError();
     sendErrorProd(error, res);
   }
 };
