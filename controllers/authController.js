@@ -14,7 +14,6 @@ exports.signup = catchAsync(async (req, res, next) => {
     email: req.body.email,
     password: req.body.password,
     passwordConfirm: req.body.passwordConfirm,
-    passwordChangedAt: req.body.passwordChangedAt,
   });
 
   const token = signToken(newUser._id);
@@ -77,3 +76,28 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   next();
 });
+
+exports.restrictTo = (...roles) => (req, res, next) => {
+  // roles ['admin','lead-guide']
+  if (!roles.includes(req.user.role)) {
+    return next(
+      new AppError(
+        `User role ${req.user.role} is unauthorized to access this route`,
+        403
+      )
+    );
+  }
+  next();
+};
+
+exports.forgotPassword = catchAsync(async (req, res, next) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return next(new AppError(`No such user with email ${email}`, 404));
+  }
+
+  const resetToken = user.createPasswordResetToken();
+});
+exports.resetPassword = catchAsync(async (req, res, next) => {});
