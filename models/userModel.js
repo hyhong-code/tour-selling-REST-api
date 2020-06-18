@@ -74,8 +74,8 @@ UserSchema.pre('save', function (next) {
 });
 
 // Filter out inactive users pre find
-UserSchema.pre(/^find/, async function (next) {
-  await this.find({ active: { $ne: false } }); // add this to query before its executed
+UserSchema.pre(/^find/, function (next) {
+  this.find({ active: { $ne: false } }); // addon this to query before its executed
   next();
 });
 

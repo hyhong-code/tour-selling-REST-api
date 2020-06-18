@@ -1,9 +1,9 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const User = require('../models/userModel');
 const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
 const sendEmail = require('../utils/email');
-const crypto = require('crypto');
 
 const signToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -12,6 +12,18 @@ const signToken = (id) =>
 
 const createAndSendToken = (user, statusCode, res) => {
   const token = signToken(user._id);
+
+  const cookieOptions = {
+    expires: new Date(
+      Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
+    ),
+    httpOnly: true, // Receive and send only, no access
+    secure: process.env.NODE_ENV === 'production',
+  };
+
+  res.cookie('jwt', token, cookieOptions);
+
+  user.password = undefined; // Don't show password to cliend
 
   res.status(statusCode).json({
     status: 'success',
@@ -33,11 +45,13 @@ exports.signup = catchAsync(async (req, res, next) => {
 
 exports.login = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
+
   if (!email || !password) {
     return next(new AppError(`Email and password are required`, 400));
   }
 
   const user = await User.findOne({ email }).select('+password'); // because select:false in model
+
   if (!user || !(await user.correctPassword(password, user.password))) {
     return next(new AppError(`Invalid credentials`, 401));
   }
