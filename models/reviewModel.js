@@ -48,6 +48,9 @@ ReviewSchema.pre(/^find/, function (next) {
   next();
 });
 
+// Enforces a user can only create one review for each tour
+ReviewSchema.index({ tour: 1, user: 1 }, { unique: true });
+
 // statics because we need to aggregate on the model
 ReviewSchema.statics.calcAverageRatings = async function (tourId) {
   const stats = await this.aggregate([
