@@ -115,6 +115,13 @@ const TourSchema = new mongoose.Schema(
   }
 );
 
+// Set single field index
+// TourSchema.index({ price: 1 });
+
+// Compound index
+TourSchema.index({ price: 1, ratingsAverage: -1 }); // 1: ASC, -1: DESC
+TourSchema.index({ slug: 1 });
+
 // Virtuals cannot be selected
 TourSchema.virtual('durationWeeks').get(function () {
   return this.duration / 7;
