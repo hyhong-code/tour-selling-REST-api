@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const Tour = require('./tourModel');
 
 const ReviewSchema = new mongoose.Schema(
   {
@@ -44,6 +45,48 @@ ReviewSchema.pre(/^find/, function (next) {
     path: 'user',
     select: 'name photo',
   });
+  next();
+});
+
+// statics because we need to aggregate on the model
+ReviewSchema.statics.calcAverageRatings = async function (tourId) {
+  const stats = await this.aggregate([
+    { $match: { tour: tourId } },
+    {
+      $group: {
+        _id: '$tour',
+        nRatings: { $sum: 1 },
+        avgRatings: { $avg: '$rating' },
+      },
+    },
+  ]);
+
+  if (stats.length) {
+    const [{ nRatings: ratingsQuantity, avgRatings: ratingsAverage }] = stats;
+    await Tour.findByIdAndUpdate(tourId, {
+      ratingsAverage,
+      ratingsQuantity,
+    });
+  } else {
+    // No reviews
+    await Tour.findByIdAndUpdate(tourId, {
+      ratingsAverage: 4.5,
+      ratingsQuantity: 0,
+    });
+  }
+};
+
+// Save to get new rating, then re-calc avg
+ReviewSchema.post('save', async function (doc, next) {
+  // doc middleware, this points to doc
+  await this.constructor.calcAverageRatings(this.tour);
+  next();
+});
+
+// Update/delete to get new rating, then re-calc avg
+ReviewSchema.post(/^findOneAnd/, async function (doc, next) {
+  // query middleware, this points to query
+  await doc.constructor.calcAverageRatings(doc.tour);
   next();
 });
 
