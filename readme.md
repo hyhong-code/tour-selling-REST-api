@@ -6,5 +6,5 @@
 
 ## API DOC SNEAKPEAK:
 
-<img src="./public/showcase/api-doc-view1.png" width="90%">
-<img src="./public/showcase/api-doc-view2.png" width="90%">
+<img src="./public/showcase/api-doc-view1.png" width="100%">
+<img src="./public/showcase/api-doc-view2.png" width="100%">
